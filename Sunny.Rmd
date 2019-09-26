@@ -1,0 +1,111 @@
+---
+title: "Analysis of Always Sunny in Philadelphia Characters based of Episode Scripts"
+author: "Anthony"
+date: "9/25/2019"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r}
+#Import Rvest package and set working directory
+library(rvest)
+library(tidyverse)
+#Setwd to correct folder
+setwd('C:/Users/Anthony/Desktop/R Projects/Sunny/Script')
+Sunny <- 'C:/Users/Anthony/Desktop/R Projects/Sunny/Script'
+```
+
+```{r}
+#URL for script website
+url <- 'https://www.springfieldspringfield.co.uk/episode_scripts.php?tv-show=its-always-sunny-in-philadelphia'
+page1 <- read_html(url)
+#html_nodes correspond to links for each episode
+episodes <- html_nodes(page1, '.season-episode-title')
+episode_data <- html_text(episodes)
+```
+
+```{r}
+#Get link URLs
+link_urls <- page1 %>% #set variable to page1
+  html_nodes(".season-episode-title") %>% #get the nodes
+  html_attr("href") # extract URLs
+#Get link text
+links <- page1 %>% # set link variable to page1
+  html_nodes(".season-episode-title") %>% #get the nodes
+  html_text() # extract the text
+#Remove special characters from links, and amend urls
+links <- gsub("[[:punct:]]", "", links)
+link_urls <- paste0("https://www.springfieldspringfield.co.uk/", link_urls)
+#links and urls to dataframe
+Tlinks <- data.frame(links = links, urls = link_urls, stringsAsFactors = FALSE)
+```
+
+```{r}
+#Read Tlinks$urls, go to the url, extract script, and save to Sunny folder
+for(i in seq(nrow(Tlinks))) {
+  text <- read_html(Tlinks$urls[i]) %>% # load the page
+  html_nodes(".episode_script") %>%
+  html_text()
+  filename <- paste0("C:/Users/Anthony/Desktop/R Projects/Sunny/", Tlinks$links[i], ".txt")
+  sink(file = filename) %>% # open file to write 
+  cat(text)  # write the file
+  sink() # close the file
+}
+```
+
+```{r}
+#Install Natural Language Processing Package and SnowballC
+library(tm)
+library(SnowballC)
+
+#Aggregate plain text files into a Corpus
+folder <- file.path(Sunny)
+scripts <- dir(folder)
+scripts <- Corpus(DirSource(folder), readerControl = list(id=scripts))
+inspect(scripts[1])
+```
+
+
+```{r}
+#Process script for sentiment analysis, word mapping, etc. This requires all lowercase letters, and removing punctuation, numbers, and stopwords. It is also important to turn each word into its stem as to adaquately capture the use words unadulterated by verb tense)
+scripts <- tm_map(scripts, tolower)
+scripts <- tm_map(scripts, removePunctuation)
+#scripts <- tm_map(scripts, stemDocument, language = 'english') Stemming improperly modified too many #words to be consider useful
+
+scripts <- tm_map(scripts, removeNumbers)
+scripts <- tm_map(scripts, removeWords, stopwords("english"))
+scripts <- tm_map(scripts, stripWhitespace)
+#inspect an individual script to ensure that functions worked
+inspect(scripts[7])
+```
+
+```{r}
+
+#Create a term document matrix for analysis
+terms <- TermDocumentMatrix(scripts)
+matrix <- as.matrix(terms)
+matrix2 <- sort(rowSums(matrix),decreasing=TRUE)
+word_table <- data.frame(words = names(matrix2),counts=matrix2)
+
+#Use associations with characters to characterize them... Sentiment analysis on word by word basis?...
+dee <- findAssocs(terms, terms = "dee", corlimit = 0.20)
+mac <- findAssocs(terms, terms = "mac", corlimit = 0.20)
+charlie <- findAssocs(terms, terms = "charlie", corlimit = .20)
+frank <- findAssocs(terms, terms = "frank", corlimit = .20)
+dennis <- findAssocs(terms, terms = 'dennis', corlimit=.20)
+
+#Sentiment analysis of the word associations for each character
+library(tidytext)
+
+```
+
+```{r}
+#Create a wordcloud
+library(wordcloud)
+library(wesanderson)
+
+set.seed(346)
+wordcloud(word_table$words, word_table$counts, max.words = 85, min.freq = 100, random.order=FALSE, rot.per = .3, colors=wes_palette('FantasticFox1', 5, type = c("discrete")))
+```
+
