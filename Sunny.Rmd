@@ -28,12 +28,14 @@ episode_data <- html_text(episodes)
 ```{r}
 #Get link URLs
 link_urls <- page1 %>% #set variable to page1
-  html_nodes(".season-episode-title") %>% #get the nodes
-  html_attr("href") # extract URLs
+html_nodes(".season-episode-title") %>% #get the nodes
+html_attr("href") # extract URLs
+
 #Get link text
 links <- page1 %>% # set link variable to page1
-  html_nodes(".season-episode-title") %>% #get the nodes
-  html_text() # extract the text
+html_nodes(".season-episode-title") %>% #get the nodes
+html_text() # extract the text
+
 #Remove special characters from links to ensure proper file names, and amend urls
 links <- gsub("[[:punct:]]", "", links)
 link_urls <- paste0("https://www.springfieldspringfield.co.uk/", link_urls)
@@ -43,7 +45,7 @@ Tlinks <- data.frame(links = links, urls = link_urls, stringsAsFactors = FALSE)
 
 ```{r}
 #Read Tlinks$urls, go to the url, extract script, and save to Sunny folder
-for(i in seq(nrow(Tlinks))) {
+for (i in seq(nrow(Tlinks))) {
   text <- read_html(Tlinks$urls[i]) %>% # load the page
   html_nodes(".episode_script") %>%
   html_text()
@@ -55,7 +57,7 @@ for(i in seq(nrow(Tlinks))) {
 ```
 
 ```{r}
-#Install Natural Language Processing Package and SnowballC
+#Install NLP and SnowballC
 library(tm)
 library(SnowballC)
 
@@ -68,10 +70,10 @@ inspect(scripts[7])
 
 
 ```{r}
-#Process script for sentiment analysis, word mapping, etc. This requires all lowercase letters, and removing punctuation, numbers, and stopwords. It is also important to turn each word into its stem as to adaquately capture the use words unadulterated by verb tense)
+#Process script for sentiment analysis, word mapping, etc. This requires all lowercase letters, and removing punctuation, numbers, and stopwords
 scripts <- tm_map(scripts, tolower)
 scripts <- tm_map(scripts, removePunctuation)
-#scripts <- tm_map(scripts, stemDocument, language = 'english') Stemming improperly modified too many words to be consider useful
+#scripts <- tm_map(scripts, stemDocument, language = 'english') Stemming improperly modified too many words to be useful
 scripts <- tm_map(scripts, removeNumbers)
 scripts <- tm_map(scripts, removeWords, stopwords("english"))
 scripts <- tm_map(scripts, stripWhitespace)
@@ -87,7 +89,7 @@ matrix <- as.matrix(terms)
 matrix2 <- sort(rowSums(matrix),decreasing=TRUE)
 word_table <- data.frame(words = names(matrix2),counts=matrix2)
 
-#Use associations with characters to characterize them... Sentiment analysis on word by word basis?...
+#Find word associations by character. What do they say/what is said about them most often?
 dee <- findAssocs(terms, terms = "dee", corlimit = 0.20)
 mac <- findAssocs(terms, terms = "mac", corlimit = 0.20)
 charlie <- findAssocs(terms, terms = "charlie", corlimit = .20)
